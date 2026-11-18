@@ -98,7 +98,7 @@ class WalmartSource:
     def check_store(self, store: dict) -> list[Hit]:
         r = self.s.get(SEARCH, headers=HEADERS, timeout=25, params={
             "q": self.cfg.get("keyword", "pokemon trading cards"),
-            "facet": "fulfillment_method_in_store:In-store",
+            "facet": "fulfillment_method_in_store:In-store||retailer_type:Walmart",
             "affinityOverride": "store_specific",
         }, cookies={"assortmentStoreId": str(store["id"]), "hasLocData": "1"})
         if r.status_code in (403, 412, 429) or "/blocked" in getattr(r, "url", ""):

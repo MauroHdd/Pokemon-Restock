@@ -57,7 +57,13 @@ cat > "$PLIST" <<EOF
 </plist>
 EOF
 launchctl bootout "gui/$(id -u)/com.pokemon.restock" >/dev/null 2>&1 || true
-launchctl bootstrap "gui/$(id -u)" "$PLIST"
+sleep 3
+for i in 1 2 3 4 5; do
+  launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null && break
+  sleep 3
+done
+launchctl print "gui/$(id -u)/com.pokemon.restock" >/dev/null 2>&1 \
+  || { echo "❌ Could not start the monitor. Paste the install line again."; exit 1; }
 
 echo "📲 Sending a test alert to your phone..."
 ./venv/bin/python monitor.py --test-sms || true
