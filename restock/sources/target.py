@@ -170,4 +170,6 @@ class TargetSource:
                     quantity=qty, url=p["url"], distance_mi=store["distance"],
                     availability_note=note or "In-store pickup",
                 ))
+        from collections import Counter
+        log.info("Target statuses: %s", dict(Counter(h.status.name for h in hits)))
         return hits

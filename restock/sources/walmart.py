@@ -60,21 +60,30 @@ def parse_items(html: str) -> list[dict]:
     return [it for st in stacks for it in (st.get("items") or []) if isinstance(it, dict)]
 
 
-def classify(item: dict) -> tuple[Stock, int | None]:
+def classify(item: dict, store_id: str = "") -> tuple[Stock, int | None, str]:
+    """In-store status at THIS store. Ship-only items count as not in store."""
     avail = ((item.get("availabilityStatusV2") or {}).get("value")
              or item.get("availabilityStatus") or "").upper()
-    fulfil = json.dumps([item.get("fulfillmentBadgeGroups"), item.get("fulfillmentSummary"),
-                         item.get("fulfillmentBadge"), item.get("fulfillmentType")]).lower()
+    badges = json.dumps([item.get("fulfillmentBadgeGroups"), item.get("fulfillmentBadges"),
+                         item.get("fulfillmentSummary"), item.get("fulfillmentTitle")]).lower()
     qty = None
     m = re.search(r"only (\d+) left", json.dumps(item).lower())
     if m:
         qty = int(m.group(1))
-    if "OUT_OF_STOCK" in avail:
-        return Stock.OUT, None
-    pickup = "pickup" in fulfil or "in-store" in fulfil or "in store" in fulfil
-    if avail == "IN_STOCK" and pickup:
-        return (Stock.LIMITED if qty is not None and qty <= 3 else Stock.IN_STOCK), qty
-    return Stock.UNKNOWN, qty
+    if item.get("isOutOfStock") is True or "OUT_OF_STOCK" in avail:
+        return Stock.OUT, None, ""
+    summary = item.get("fulfillmentSummary") or []
+    store_pickup = any(isinstance(f, dict) and str(f.get("fulfillment", "")).upper() in ("PICKUP", "IN_STORE")
+                       and (not store_id or not f.get("storeId") or str(f.get("storeId")) == str(store_id))
+                       for f in summary)
+    badge_pickup = "pickup" in badges or "in-store" in badges or "in store" in badges
+    aisle = item.get("productLocationDisplayValue")
+    if store_pickup or badge_pickup or aisle:
+        note = "Pickup at this Walmart" + (f" – aisle {aisle}" if aisle else "")
+        return (Stock.LIMITED if qty is not None and qty <= 3 else Stock.IN_STOCK), qty, note
+    if avail == "IN_STOCK":
+        return Stock.OUT, None, ""   # online/shipping only, not on this store's shelf
+    return Stock.UNKNOWN, qty, ""
 
 
 class WalmartSource:
@@ -99,16 +108,19 @@ class WalmartSource:
         if items and not getattr(self, "_logged_sample", False):
             self._logged_sample = True
             it = items[0]
-            keep = {k: v for k, v in it.items() if any(w in k.lower() for w in (
-                "avail", "fulfil", "badge", "stock", "pickup", "inventory", "seller", "flag", "message"))}
-            log.info("WALMART-DEBUG %d items; keys=%s; stockinfo=%s", len(items),
-                     sorted(it.keys()), json.dumps(keep)[:1500])
+            for it in items[:3]:
+                keep = {k: it.get(k) for k in (
+                    "name", "sellerName", "availabilityStatusV2", "isOutOfStock",
+                    "fulfillmentBadgeGroups", "fulfillmentSummary", "fulfillmentType",
+                    "productLocationDisplayValue", "availabilityStatusDisplayValue")}
+                keep["name"] = (keep["name"] or "")[:40]
+                log.info("WALMART-DEBUG %s", json.dumps(keep)[:700])
         for it in items:
             name = it.get("name") or ""
             seller = (it.get("sellerName") or "Walmart.com").lower()
             if "walmart" not in seller or not is_pokemon_tcg(name):
                 continue  # skip marketplace resellers
-            status, qty = classify(it)
+            status, qty, note = classify(it, str(store["id"]))
             url = it.get("canonicalUrl") or f"/ip/{it.get('usItemId')}"
             hits.append(Hit(
                 retailer="Walmart", store_id=str(store["id"]), store_name=store["name"],
@@ -116,7 +128,7 @@ class WalmartSource:
                 product_name=name, price=_price(it), status=status, quantity=qty,
                 url=("https://www.walmart.com" + url) if url.startswith("/") else url,
                 lat=store.get("lat"), lon=store.get("lon"),
-                availability_note="In store / pickup at this Walmart",
+                availability_note=note or "In store / pickup at this Walmart",
             ))
         return hits
 
