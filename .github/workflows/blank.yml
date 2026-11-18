@@ -1,8 +1,10 @@
 name: Pokemon restock monitor
 
 on:
-  schedule:
-    - cron: "*/5 * * * *"   # GitHub's minimum; real runs often land every 5–15 min
+  # Automatic runs are OFF: the monitor now runs on Reydel's Mac (see install-mac.sh),
+  # because Target and Walmart block GitHub's servers. To turn GitHub runs back on, add:
+  #   schedule:
+  #     - cron: "*/5 * * * *"
   workflow_dispatch: {}      # lets you click "Run workflow" by hand
 
 concurrency:

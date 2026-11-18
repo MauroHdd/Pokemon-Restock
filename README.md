@@ -12,7 +12,24 @@ Your phone gets an alert when Pokémon cards show up at **Target**, **Walmart** 
 3. Type `pokemon_Hernandawgs69` exactly, then tap **Subscribe**.
 4. Allow notifications.
 
-## Step 2 – Put it online so it runs 24/7 (15 minutes, free)
+## Step 2 – Run it on your Mac (5 minutes) ✅ recommended
+Target and Walmart block checks from GitHub's servers, so the monitor runs on your Mac instead.
+
+1. Open **Terminal** (press Cmd+Space, type **Terminal**, press Enter).
+2. Paste this line and press Enter:
+   ```
+   curl -fsSL https://raw.githubusercontent.com/MauroHdd/Pokemon-Restock/main/install-mac.sh | bash
+   ```
+3. If a window asks to install **developer tools**, click **Install**. When it finishes, paste the line again.
+4. You'll get a test alert on your phone. Done.
+
+It starts by itself every time the Mac turns on. **Keep the Mac plugged in, awake and on Wi-Fi.** If it goes to sleep, checks pause.
+
+- **See what it's doing:** `tail -f ~/pokemon-restock/monitor.log`
+- **Turn it off:** `curl -fsSL https://raw.githubusercontent.com/MauroHdd/Pokemon-Restock/main/uninstall-mac.sh | bash`
+- **Update it after I change something:** paste the install line again.
+
+## (Old) Run it on GitHub instead
 1. Make a free account at **github.com**.
 2. Click **New repository**, name it `pokemon-restock`, choose **Public**, and click **Create**.
 3. Click **uploading an existing file**, drag in everything from this folder, and click **Commit**.
