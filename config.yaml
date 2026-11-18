@@ -37,13 +37,16 @@ msrp:
 sources:
   target:
     enabled: true
-    keywords: ["pokemon cards", "pokemon trading card game", "pokemon tcg", "pokemon elite trainer box"]
-    max_pages: 3
+    keywords: ["pokemon tcg", "pokemon elite trainer box"]
+    max_pages: 2
+    every_minutes: 15            # Target blocks fast checking, so it's checked every ~15 min
+    product_refresh_minutes: 90  # re-search Target's product list every 90 min
 
   walmart:
     enabled: true          # EXPERIMENTAL – Walmart often blocks automated checks
     warn_on_failure: false # don't send "failing" alerts when Walmart blocks us
     keyword: "pokemon trading cards"
+    every_minutes: 10
     stores:                # Walmart store numbers (lat/lon approximate)
       - {id: 2533, name: "Gulf Breeze Supercenter", address: "3767 Gulf Breeze Pkwy, Gulf Breeze, FL 32563", lat: 30.3990, lon: -87.0230}
       - {id: 3785, name: "Pensacola N Navy Blvd", address: "501 N Navy Blvd, Pensacola, FL 32507", lat: 30.4270, lon: -87.2860}

@@ -110,7 +110,16 @@ TARGET_ROUTES = {
 }
 
 
-def test_target_source():
+def _reset_target():
+    import restock.sources.target as t
+    t._CACHE.update(stores=None, stores_at=0.0, products=None, products_at=0.0)
+    t._BLOCK.update(until=0.0, strikes=0)
+
+
+def test_target_source(monkeypatch):
+    import restock.sources.target as t
+    monkeypatch.setattr(t.time, "sleep", lambda s: None)
+    _reset_target()
     src = TargetSource(CFG["sources"]["target"] | {"keywords": ["pokemon"], "max_pages": 1},
                        HOME, session=FakeSession(TARGET_ROUTES))
     hits = {h.product_id: h for h in src.run()}
@@ -140,6 +149,7 @@ def test_bestbuy_source(monkeypatch):
 # ---------- end to end ----------
 def test_end_to_end(tmp_path, monkeypatch, capsys):
     import restock.sources.target as t
+    _reset_target()
     monkeypatch.setattr(t.requests, "Session", lambda: FakeSession(TARGET_ROUTES))
     monkeypatch.setattr(t.time, "sleep", lambda s: None)
     cfg = CFG | {"sources": {"target": {"enabled": True, "keywords": ["pokemon"], "max_pages": 1}}}
@@ -182,3 +192,51 @@ def test_walmart():
     assert hits["57"].status == Stock.OUT
     with pytest.raises(WalmartBlocked):
         parse_items("<html>Robot or human?</html>")
+
+
+def test_target_backoff(monkeypatch):
+    import pytest
+    import restock.sources.target as t
+    _reset_target()
+
+    class S:
+        calls = 0
+
+        def get(self, *a, **k):
+            S.calls += 1
+            return FakeResp({}, 435)
+
+    src = TargetSource({"keywords": ["pokemon"]}, HOME, session=S())
+    with pytest.raises(t.TargetBlocked):
+        src.run()
+    with pytest.raises(t.TargetBlocked):   # paused: no new request is made
+        src.run()
+    assert S.calls == 1 and t._BLOCK["until"] > 0
+    _reset_target()
+
+
+def test_walmart_run_maps_pickup_to_store():
+    import json as _j
+    from restock.sources.walmart import WalmartSource
+    page = {"props": {"pageProps": {"initialData": {"searchResult": {"itemStacks": [{"items": [
+        {"usItemId": "70", "name": "Pokemon TCG Booster Bundle", "price": 29.97,
+         "sellerName": "Walmart.com", "isOutOfStock": False,
+         "fulfillmentSummary": [{"fulfillment": "PICKUP", "storeId": "2533"},
+                                {"fulfillment": "DELIVERY", "storeId": "0"}]},
+        {"usItemId": "71", "name": "Pokemon TCG Elite Trainer Box", "price": 89.0,
+         "sellerName": "DealDudes", "fulfillmentSummary": [{"fulfillment": "DELIVERY", "storeId": "0"}]},
+    ]}]}}}}}
+    html = f'<script id="__NEXT_DATA__" type="application/json">{_j.dumps(page)}</script>'
+
+    class R:
+        status_code, url, text = 200, "https://www.walmart.com/search", html
+
+    class S:
+        def get(self, *a, **k):
+            return R()
+
+    hits = WalmartSource(CFG["sources"]["walmart"], HOME, S()).run()
+    instock = [h for h in hits if h.status == Stock.IN_STOCK]
+    assert len(instock) == 1 and instock[0].store_id == "2533"
+    assert all(h.product_id == "70" for h in hits)          # reseller ignored
+    assert len(hits) == len(CFG["sources"]["walmart"]["stores"])

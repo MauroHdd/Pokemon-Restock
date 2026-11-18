@@ -36,9 +36,27 @@ STATUS_MAP = {
 }
 
 
+# Shared across checks while the monitor keeps running (loop mode on the Mac)
+_CACHE = {"stores": None, "stores_at": 0.0, "products": None, "products_at": 0.0}
+_BLOCK = {"until": 0.0, "strikes": 0}
+
+
+class TargetBlocked(RuntimeError):
+    pass
+
+
 def _get(session, url, params):
+    if time.time() < _BLOCK["until"]:
+        mins = int((_BLOCK["until"] - time.time()) / 60) + 1
+        raise TargetBlocked(f"Target asked us to slow down; pausing Target for {mins} more min")
     r = session.get(url, params=params, headers=HEADERS, timeout=20)
+    if r.status_code in (429, 435, 403):
+        _BLOCK["strikes"] += 1
+        pause = min(30 * (2 ** (_BLOCK["strikes"] - 1)), 240)   # 30, 60, 120, 240 minutes
+        _BLOCK["until"] = time.time() + pause * 60
+        raise TargetBlocked(f"Target refused (HTTP {r.status_code}); pausing Target for {pause} min")
     r.raise_for_status()
+    _BLOCK["strikes"] = 0
     return r.json()
 
 
@@ -113,7 +131,7 @@ class TargetSource:
                     })
                 if len(batch) < 24:
                     break
-                time.sleep(0.5)
+                time.sleep(random.uniform(2, 4))
         return products
 
     def fulfillment(self, tcins: list[str], store: dict) -> dict[str, tuple[Stock, int | None, str]]:
@@ -133,7 +151,7 @@ class TargetSource:
                 opt = next((o for o in opts if str(o.get("location_id")) == store["id"]),
                            opts[0] if opts else None)
                 result[tcin] = self._parse_option(opt)
-            time.sleep(0.4)
+            time.sleep(random.uniform(1.5, 3.5))
         return result
 
     @staticmethod
@@ -153,13 +171,20 @@ class TargetSource:
         return Stock.UNKNOWN, qty, ""
 
     def run(self) -> list[Hit]:
-        stores = self.stores()
+        now = time.time()
+        if not _CACHE["stores"] or now - _CACHE["stores_at"] > 24 * 3600:
+            _CACHE["stores"], _CACHE["stores_at"] = self.stores(), now
+        stores = _CACHE["stores"]
         if not stores:
             raise RuntimeError("no Target stores returned")
-        products = self.search([s["id"] for s in stores])
+        refresh = self.cfg.get("product_refresh_minutes", 90) * 60
+        if _CACHE["products"] is None or now - _CACHE["products_at"] > refresh:
+            _CACHE["products"], _CACHE["products_at"] = self.search([s["id"] for s in stores]), now
+        products = _CACHE["products"]
         log.info("Target: %d stores, %d Pokemon TCG products", len(stores), len(products))
         hits = []
         for store in stores:
+            time.sleep(random.uniform(1, 3))
             fl = self.fulfillment([p["tcin"] for p in products], store)
             for p in products:
                 status, qty, note = fl.get(p["tcin"], (Stock.UNKNOWN, None, ""))

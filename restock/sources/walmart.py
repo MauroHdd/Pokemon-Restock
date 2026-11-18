@@ -133,13 +133,41 @@ class WalmartSource:
         return hits
 
     def run(self) -> list[Hit]:
-        hits = []
-        for store in self.cfg.get("stores", []):
-            hits += self.check_store(store)   # a block on any store stops Walmart for this run
-            time.sleep(random.uniform(2, 5))
+        """Walmart's search isn't store-specific, so ask once and map any
+        pickup offers back to our stores by Walmart store number."""
+        stores = {str(st["id"]): st for st in self.cfg.get("stores", [])}
+        if not stores:
+            return []
+        first = next(iter(stores.values()))
+        r = self.s.get(SEARCH, headers=HEADERS, timeout=25, params={
+            "q": self.cfg.get("keyword", "pokemon trading cards"),
+            "facet": "retailer_type:Walmart",
+        }, cookies={"assortmentStoreId": str(first["id"]), "hasLocData": "1"})
+        if r.status_code in (403, 412, 429) or "/blocked" in getattr(r, "url", ""):
+            raise WalmartBlocked(f"Walmart refused the request (HTTP {r.status_code})")
+        hits, walmart_sold = [], 0
+        for it in parse_items(r.text):
+            name = it.get("name") or ""
+            seller = (it.get("sellerName") or "Walmart.com").lower()
+            if "walmart" not in seller or not is_pokemon_tcg(name):
+                continue  # outside sellers never count
+            walmart_sold += 1
+            pid = str(it.get("usItemId") or it.get("id"))
+            url = it.get("canonicalUrl") or f"/ip/{pid}"
+            url = ("https://www.walmart.com" + url) if url.startswith("/") else url
+            pickup_ids = {str(f.get("storeId")) for f in (it.get("fulfillmentSummary") or [])
+                          if isinstance(f, dict) and str(f.get("fulfillment", "")).upper() in ("PICKUP", "IN_STORE")}
+            out = it.get("isOutOfStock") is True
+            for sid, st in stores.items():
+                in_stock = (sid in pickup_ids) and not out
+                hits.append(Hit(
+                    retailer="Walmart", store_id=sid, store_name=st["name"], address=st["address"],
+                    product_id=pid, product_name=name, price=_price(it),
+                    status=Stock.IN_STOCK if in_stock else Stock.OUT, url=url,
+                    lat=st.get("lat"), lon=st.get("lon"),
+                    availability_note="Pickup at this Walmart",
+                ))
         from collections import Counter
-        log.info("Walmart statuses: %s; sample: %s", dict(Counter(h.status.name for h in hits)),
-                 [(h.store_name, h.product_name[:50], h.status.name) for h in hits[:5]])
-        log.info("Walmart: %d Pokemon TCG listings across %d stores",
-                 len(hits), len(self.cfg.get("stores", [])))
+        log.info("Walmart: %d Walmart-sold Pokémon items; statuses %s", walmart_sold,
+                 dict(Counter(h.status.name for h in hits)))
         return hits

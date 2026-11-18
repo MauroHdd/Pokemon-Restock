@@ -29,6 +29,7 @@ from restock.state import State
 
 SOURCES = {"target": TargetSource, "walmart": WalmartSource, "bestbuy": BestBuySource, "shopify": ShopifySource}
 log = logging.getLogger("monitor")
+_LAST_RUN: dict[str, float] = {}
 
 
 def load_dotenv(path: str = ".env") -> None:
@@ -60,6 +61,10 @@ def check_once(cfg: dict, state: State, notifier: Notifier) -> int:
             continue
         if key == "bestbuy" and not os.getenv("BESTBUY_API_KEY"):
             continue  # Best Buy is optional: skipped quietly when there's no key
+        every = scfg.get("every_minutes")
+        if every and time.time() - _LAST_RUN.get(key, 0) < every * 60:
+            continue  # this retailer is checked less often so it doesn't block us
+        _LAST_RUN[key] = time.time()
         src = src_cls(scfg, home)
         try:
             hits = src.run()
