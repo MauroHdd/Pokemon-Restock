@@ -62,16 +62,6 @@ sources:
   shopify:
     enabled: true          # local shops; any shop whose site isn't Shopify is skipped automatically
     shops:
-      - name: "TBS Comics (Pensacola & Fort Walton Beach)"
-        url: "https://www.tbscomics.com"
-        address: "6895 N 9th Ave Ste A, Pensacola / 550 Mary Esther Blvd, Fort Walton Beach"
-        lat: 30.4790
-        lon: -87.2010
-      - name: "Ben's Card World"
-        url: "https://www.benscardworld.com"
-        address: "4771 Bayou Blvd #6, Pensacola, FL 32503"
-        lat: 30.4740
-        lon: -87.2090
       - name: "Emerald Collectibles"
         url: "https://emeraldcollectibles.com"
         address: "6707 Plantation Rd Suite C1, Pensacola, FL 32504"
