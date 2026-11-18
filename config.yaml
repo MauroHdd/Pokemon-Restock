@@ -37,7 +37,7 @@ msrp:
 sources:
   target:
     enabled: true
-    keywords: ["pokemon trading cards", "pokemon elite trainer box", "pokemon booster bundle"]
+    keywords: ["pokemon cards", "pokemon trading card game", "pokemon tcg", "pokemon elite trainer box"]
     max_pages: 3
 
   walmart:

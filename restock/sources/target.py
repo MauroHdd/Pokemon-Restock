@@ -83,13 +83,13 @@ class TargetSource:
 
     def search(self, store_ids: list[str]) -> list[dict]:
         products, seen = [], set()
-        for kw in self.cfg.get("keywords", ["pokemon trading cards"]):
+        for kw in self.cfg.get("keywords", ["pokemon cards"]):
             for offset in range(0, 24 * self.cfg.get("max_pages", 3), 24):
                 data = _get(self.s, f"{BASE}/plp_search_v2", {
                     "key": WEB_KEY, "channel": "WEB", "count": 24, "offset": offset,
                     "keyword": kw, "page": f"/s/{kw}", "default_purchasability_filter": "false",
-                    "pricing_store_id": store_ids[0], "store_ids": ",".join(store_ids),
-                    "visitor_id": self.visitor, "zip": self.home["zip"],
+                    "pricing_store_id": store_ids[0],
+                    "visitor_id": self.visitor,
                 })
                 batch = _dig(data, "data", "search", "products", default=[])
                 titles = [_dig(p, "item", "product_description", "title", default="") for p in batch]

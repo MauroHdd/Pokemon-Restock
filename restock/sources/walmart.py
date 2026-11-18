@@ -95,7 +95,15 @@ class WalmartSource:
         if r.status_code in (403, 412, 429) or "/blocked" in getattr(r, "url", ""):
             raise WalmartBlocked(f"Walmart refused the request (HTTP {r.status_code})")
         hits = []
-        for it in parse_items(r.text):
+        items = parse_items(r.text)
+        if items and not getattr(self, "_logged_sample", False):
+            self._logged_sample = True
+            it = items[0]
+            keep = {k: v for k, v in it.items() if any(w in k.lower() for w in (
+                "avail", "fulfil", "badge", "stock", "pickup", "inventory", "seller", "flag", "message"))}
+            log.info("WALMART-DEBUG %d items; keys=%s; stockinfo=%s", len(items),
+                     sorted(it.keys()), json.dumps(keep)[:1500])
+        for it in items:
             name = it.get("name") or ""
             seller = (it.get("sellerName") or "Walmart.com").lower()
             if "walmart" not in seller or not is_pokemon_tcg(name):
