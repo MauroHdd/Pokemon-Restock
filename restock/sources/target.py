@@ -92,6 +92,10 @@ class TargetSource:
                     "visitor_id": self.visitor, "zip": self.home["zip"],
                 })
                 batch = _dig(data, "data", "search", "products", default=[])
+                titles = [_dig(p, "item", "product_description", "title", default="") for p in batch]
+                log.info("Target search %r offset %d: %d raw results, sample=%s, errors=%s, keys=%s",
+                         kw, offset, len(batch), titles[:3], str(data.get("errors"))[:200],
+                         list((_dig(data, "data", "search", default={}) or {}).keys())[:8])
                 for p in batch:
                     tcin = str(p.get("tcin"))
                     title = _dig(p, "item", "product_description", "title", default="")

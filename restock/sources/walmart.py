@@ -117,6 +117,9 @@ class WalmartSource:
         for store in self.cfg.get("stores", []):
             hits += self.check_store(store)   # a block on any store stops Walmart for this run
             time.sleep(random.uniform(2, 5))
+        from collections import Counter
+        log.info("Walmart statuses: %s; sample: %s", dict(Counter(h.status.name for h in hits)),
+                 [(h.store_name, h.product_name[:50], h.status.name) for h in hits[:5]])
         log.info("Walmart: %d Pokemon TCG listings across %d stores",
                  len(hits), len(self.cfg.get("stores", [])))
         return hits
