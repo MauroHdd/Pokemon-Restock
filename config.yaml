@@ -1,0 +1,80 @@
+# ---------- Where alerts go ----------
+# Free ntfy app: install it on your phone and subscribe to this exact name.
+ntfy_topic: pokemon_Hernandawgs69
+
+# ---------- Where you are ----------
+home:
+  name: Gulf Breeze, FL
+  zip: "32561"
+  lat: 30.3571
+  lon: -87.1639
+  radius_miles: 50
+
+# ---------- How often (only used in --loop mode on a server) ----------
+schedule:
+  min_minutes: 5
+  max_minutes: 8      # randomized between min and max so it doesn't look like a bot
+
+# ---------- Alert rules ----------
+alerts:
+  priority_categories: ["Elite Trainer Box", "Booster Bundle"]   # + anything "30th Anniversary"
+  msrp_tolerance: 0.05        # within 5% of MSRP counts as "at MSRP"
+  only_msrp: false            # true = never text about marked-up listings
+  max_texts_per_check: 8      # anything beyond this is bundled into one summary text
+  source_failure_warn_after: 12   # text you if a retailer check fails this many times in a row
+
+# Typical US MSRPs – edit if Pokémon changes prices
+msrp:
+  Elite Trainer Box: 59.99
+  Booster Bundle: 29.99
+  Booster Pack: 5.49
+  Booster Box: 161.64
+  Tin: 29.99
+  Premium Collection: 79.99
+  Collection Box: 39.99
+
+# ---------- Retailers ----------
+sources:
+  target:
+    enabled: true
+    keywords: ["pokemon trading cards", "pokemon elite trainer box", "pokemon booster bundle"]
+    max_pages: 3
+
+  walmart:
+    enabled: true          # EXPERIMENTAL – Walmart often blocks automated checks
+    warn_on_failure: false # don't send "failing" alerts when Walmart blocks us
+    keyword: "pokemon trading cards"
+    stores:                # Walmart store numbers (lat/lon approximate)
+      - {id: 2533, name: "Gulf Breeze Supercenter", address: "3767 Gulf Breeze Pkwy, Gulf Breeze, FL 32563", lat: 30.3990, lon: -87.0230}
+      - {id: 3785, name: "Pensacola N Navy Blvd", address: "501 N Navy Blvd, Pensacola, FL 32507", lat: 30.4270, lon: -87.2860}
+      - {id: 3484, name: "Pensacola S Blue Angel Pkwy", address: "2951 S Blue Angel Pkwy, Pensacola, FL 32506", lat: 30.3920, lon: -87.3530}
+      - {id: 1605, name: "Pensacola Mobile Hwy", address: "4600 Mobile Hwy Ste 122, Pensacola, FL 32506", lat: 30.4440, lon: -87.2770}
+      - {id: 1224, name: "Pensacola Creighton Rd", address: "2650 Creighton Rd, Pensacola, FL 32504", lat: 30.4970, lon: -87.2030}
+      - {id: 1222, name: "Pensacola Blvd", address: "8970 Pensacola Blvd, Pensacola, FL 32534", lat: 30.5310, lon: -87.2810}
+      - {id: 990,  name: "Milton Supercenter", address: "4965 US-90, Milton, FL 32571", lat: 30.6040, lon: -87.1170}
+      - {id: 3439, name: "Navarre Supercenter", address: "9360 Navarre Pkwy, Navarre, FL 32566", lat: 30.4030, lon: -86.8650}
+      - {id: 919,  name: "Fort Walton Beach Supercenter", address: "748 Beal Pkwy NW, Fort Walton Beach, FL 32547", lat: 30.4380, lon: -86.6420}
+      - {id: 1362, name: "Destin Supercenter", address: "15017 Emerald Coast Pkwy, Destin, FL 32541", lat: 30.3880, lon: -86.4330}
+
+  bestbuy:
+    enabled: true          # only runs if a BESTBUY_API_KEY secret is added (needs a business email)
+
+  shopify:
+    enabled: true          # local shops; any shop whose site isn't Shopify is skipped automatically
+    shops:
+      - name: "TBS Comics (Pensacola & Fort Walton Beach)"
+        url: "https://www.tbscomics.com"
+        address: "6895 N 9th Ave Ste A, Pensacola / 550 Mary Esther Blvd, Fort Walton Beach"
+        lat: 30.4790
+        lon: -87.2010
+      - name: "Ben's Card World"
+        url: "https://www.benscardworld.com"
+        address: "4771 Bayou Blvd #6, Pensacola, FL 32503"
+        lat: 30.4740
+        lon: -87.2090
+      - name: "Emerald Collectibles"
+        url: "https://emeraldcollectibles.com"
+        address: "6707 Plantation Rd Suite C1, Pensacola, FL 32504"
+        lat: 30.4720
+        lon: -87.2280
+    # To add another shop, copy one block above and change the name, website, address and map location.
